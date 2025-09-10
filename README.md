@@ -58,3 +58,19 @@ A new tab should open in your default web browser with the application running.
 - **GUI Framework**: Streamlit  
 - **Deep Learning**: TensorFlow / Keras (with a pre-trained ResNet50 model)  
 - **Image Processing**: Pillow, OpenCV  
+
+## Future Work
+
+This project is under active development. Planned features include:
+
+- **Expanded Attack Options**:  
+  Integrate all initial image attack strategies from the original research, including:  
+  - Mean Color Image  
+  - Random Noise Image  
+  - Solid Red, Green, and Blue Images  
+
+- **Real-Time Metrics**:  
+  Display the **Mean Squared Error (MSE)** and **Root Mean Squared Error (RMSE)** between the original and adversarial images, updated live during the attack.  
+
+- **Model Prediction Display**:  
+  Show the model's classification label and confidence score for the **original**, **initial**, and **adversarial** images to clearly demonstrate the attack's success.  
