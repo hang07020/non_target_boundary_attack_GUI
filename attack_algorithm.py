@@ -70,9 +70,7 @@ def get_sc_img():
 def run_blue_attack(original_image_pil, max_steps, progress_bar, image_placeholder):
     classifier = load_model()
     
-    # 元のコードの initial_sample は「元画像」
     initial_sample = preprocess(original_image_pil)
-    # 元のコードの target_sample は「青い画像」
     target_sample = preprocess(get_sc_img())
     
     attack_class = np.argmax(classifier.predict(initial_sample))
@@ -98,13 +96,8 @@ def run_blue_attack(original_image_pil, max_steps, progress_bar, image_placehold
 
     # Main attack loop
     for n_steps in range(max_steps):
-        # Stop button check
-        if not st.session_state.get('attack_running', False):
-            st.warning("Attack stopped by user.")
-            break
 
         # Delta step
-        # (This logic is directly from your original script)
         for _ in range(10):
             trial_samples = [adversarial_sample + orthogonal_perturbation(delta, adversarial_sample, initial_sample) for _ in range(10)]
             predictions = np.argmax(classifier.predict(np.array(trial_samples).reshape(-1, 224, 224, 3)), axis=1)
@@ -119,7 +112,6 @@ def run_blue_attack(original_image_pil, max_steps, progress_bar, image_placehold
                 delta *= 0.9
 
         # Epsilon step
-        # (This logic is directly from your original script)
         for _ in range(10):
             trial_sample = adversarial_sample + forward_perturbation(epsilon * get_diff(adversarial_sample, initial_sample), adversarial_sample, initial_sample)
             prediction = classifier.predict(trial_sample.reshape(1, 224, 224, 3))
@@ -137,4 +129,3 @@ def run_blue_attack(original_image_pil, max_steps, progress_bar, image_placehold
     
     progress_bar.empty()
     return postprocess_for_display(adversarial_sample)
-
