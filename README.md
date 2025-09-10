@@ -2,9 +2,7 @@
 
 This project provides an interactive web application to visualize the **Non-Target Boundary Attack**, a type of adversarial attack against deep learning image classifiers.
 
-The application allows a user to upload an image and observe in real-time as it is minimally perturbed, step-by-step, to cross the model's decision boundary and cause a misclassification. This implementation uses a pre-trained **ResNet50** model and is based on the logic from the original *Boundary Attack* paper.
-
-> **Note**: Please replace this with a URL to a screenshot of your app!
+The application allows a user to upload an image and observe in real-time as it is minimally perturbed, step-by-step, to cross the model's decision boundary and cause a misclassification. This implementation uses a pre-trained **ResNet50** model and is based on the logic from https://github.com/hang07020/non_target_boundary_attack
 
 ---
 
