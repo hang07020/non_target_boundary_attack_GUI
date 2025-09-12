@@ -2,6 +2,7 @@ from __future__ import print_function
 import numpy as np
 from PIL import Image
 import streamlit as st
+import io 
 
 from keras.applications.resnet50 import ResNet50
 from keras.preprocessing import image
@@ -93,11 +94,11 @@ def get_sc_img(option, original_image=None):
     
     return Image.new('RGB', (width, height), (red, green, blue))
 
-def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_placeholder):
+
+def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_placeholder, download_placeholder, caption_placeholder):
     classifier = load_model()
     
     initial_sample = preprocess(original_image_pil)
-    # get_sc_imgに元画像を渡すように変更
     target_sample = preprocess(get_sc_img(color, original_image_pil))
     
     attack_class = np.argmax(classifier.predict(initial_sample))
@@ -124,7 +125,7 @@ def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_p
     # Main attack loop
     for n_steps in range(max_steps):
 
-        # Delta step
+        # ... (attack logic remains the same) ...
         for _ in range(10):
             trial_samples = [adversarial_sample + orthogonal_perturbation(delta, adversarial_sample, initial_sample) for _ in range(10)]
             predictions = np.argmax(classifier.predict(np.array(trial_samples).reshape(-1, 224, 224, 3)), axis=1)
@@ -137,8 +138,6 @@ def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_p
                 break 
             else:
                 delta *= 0.9
-
-        # Epsilon step
         for _ in range(10):
             trial_sample = adversarial_sample + forward_perturbation(epsilon * np.mean(get_diff(adversarial_sample, initial_sample)), adversarial_sample, initial_sample)
             prediction = classifier.predict(trial_sample.reshape(1, 224, 224, 3))
@@ -153,12 +152,38 @@ def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_p
         current_step = n_steps + 1
         progress_bar.progress(current_step / max_steps, text=f"Step {current_step}/{max_steps}")
         if current_step == 1 or current_step % 10 == 0 or current_step == max_steps:
+            current_adv_pil = postprocess_for_display(adversarial_sample)
             mse = np.mean(get_diff(initial_sample, adversarial_sample))
-            adversarial_placeholder.image(postprocess_for_display(adversarial_sample), caption=f"Adversarial (Step {current_step}) | MSE: {mse:.4f}", use_container_width=True)
+            adversarial_placeholder.image(current_adv_pil, caption=f"Adversarial (Step {current_step}) | MSE: {mse:.4f}", use_container_width=True)
+
+            # ステップ1以降でダウンロードボタンと注釈を表示
+            buf = io.BytesIO()
+            current_adv_pil.save(buf, format="PNG")
+            byte_im = buf.getvalue()
+            download_placeholder.download_button(
+                label=f"Download (Step {current_step})",
+                data=byte_im,
+                file_name=f"adversarial_step_{current_step}.png",
+                mime="image/png",
+                key=f"download_step_{current_step}"
+            )
+            caption_placeholder.caption("Note: Downloading will stop the attack process.")
     
     progress_bar.empty()
     final_image = postprocess_for_display(adversarial_sample)
     final_mse = np.mean(get_diff(initial_sample, adversarial_sample))
     adversarial_placeholder.image(final_image, caption=f"Final Adversarial | MSE: {final_mse:.4f}", use_container_width=True)
     
+    buf = io.BytesIO()
+    final_image.save(buf, format="PNG")
+    byte_im = buf.getvalue()
+    download_placeholder.download_button(
+        label="Download Final Image",
+        data=byte_im,
+        file_name="adversarial_final.png",
+        mime="image/png",
+        key="download_final"
+    )
+    caption_placeholder.empty()
+
     return final_image

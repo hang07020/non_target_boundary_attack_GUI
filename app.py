@@ -34,29 +34,16 @@ if uploaded_file is not None:
         res_col1, res_col2, res_col3 = st.columns(3)
 
         # 左のカラム：Initial Image（固定）
-        # get_sc_imgに元画像を渡すように変更
         target_image_pil = get_sc_img(color, original_image_pil)
         res_col1.image(target_image_pil, caption="Initial Image", use_container_width=True)
 
-        # 中央のカラム：Adversarial Image（動的更新用）
+        # 中央のカラム：Adversarial ImageとDownload Button（動的更新用）
         adversarial_placeholder = res_col2.empty()
-        
+        download_placeholder = res_col2.empty() 
+        caption_placeholder = res_col2.empty() # ◀️ 説明文用のプレースホルダーを追加
+
         # 右のカラム：Target Image（固定）
         res_col3.image(original_image_pil, caption="Target Image", use_container_width=True)
 
-        # 攻撃の実行
-        final_image = run_attack(original_image_pil, steps, color, progress_bar, adversarial_placeholder)
-
-        if final_image:
-            # PILイメージをバイトに変換
-            buf = io.BytesIO()
-            final_image.save(buf, format="PNG")
-            byte_im = buf.getvalue()
-
-            # 中央のカラムにダウンロードボタンを追加
-            res_col2.download_button(
-                label="Download Image",
-                data=byte_im,
-                file_name="adversarial_image.png",
-                mime="image/png"
-            )
+        # 攻撃の実行 (引数にcaption_placeholderを追加)
+        run_attack(original_image_pil, steps, color, progress_bar, adversarial_placeholder, download_placeholder, caption_placeholder)
