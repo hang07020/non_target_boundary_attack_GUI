@@ -61,36 +61,63 @@ def get_diff(sample_1, sample_2):
         diff.append(np.linalg.norm((channel - sample_2[i]).astype(np.float32)))
     return np.array(diff)
 
-def get_sc_img():
-    red, green, blue = 0, 0, 255
+def get_sc_img(option, original_image=None):
+    """選択されたオプションに基づいて画像を生成または読み込み"""
     height, width = 224, 224
-    blue_image = Image.new('RGB', (width, height), (red, green, blue))
-    return blue_image
 
-def run_blue_attack(original_image_pil, max_steps, progress_bar, image_placeholder):
+    if option == "Noise":
+        try:
+            img = Image.open('noise.png').resize((height, width))
+            return img
+        except FileNotFoundError:
+            st.error("'noise.png' not found. Please add it to the same folder. Using blue as default.")
+            option = "Blue"
+    
+    if option == "Mean":
+        if original_image:
+            image_array = np.array(original_image)
+            mean_r = int(np.mean(image_array[:, :, 0]))
+            mean_g = int(np.mean(image_array[:, :, 1]))
+            mean_b = int(np.mean(image_array[:, :, 2]))
+            return Image.new('RGB', (width, height), (mean_r, mean_g, mean_b))
+        else:
+            st.error("Original image is needed to calculate mean. Using blue as default.")
+            option = "Blue"
+
+    if option == "Red":
+        red, green, blue = 255, 0, 0
+    elif option == "Green":
+        red, green, blue = 0, 255, 0
+    else:  # "Blue" or default
+        red, green, blue = 0, 0, 255
+    
+    return Image.new('RGB', (width, height), (red, green, blue))
+
+def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_placeholder):
     classifier = load_model()
     
     initial_sample = preprocess(original_image_pil)
-    target_sample = preprocess(get_sc_img())
+    # get_sc_imgに元画像を渡すように変更
+    target_sample = preprocess(get_sc_img(color, original_image_pil))
     
     attack_class = np.argmax(classifier.predict(initial_sample))
     adversarial_sample = initial_sample
     
-    epsilon = 1.
+    epsilon = 0.02
     delta = 0.1
 
     # Move first step to the boundary
     while True:
-        trial_sample = adversarial_sample + forward_perturbation(epsilon * get_diff(adversarial_sample, target_sample), adversarial_sample, target_sample)
+        trial_sample = adversarial_sample + forward_perturbation(epsilon * np.mean(get_diff(adversarial_sample, target_sample)), adversarial_sample, target_sample)
         prediction = classifier.predict(trial_sample.reshape(1, 224, 224, 3))
         if np.argmax(prediction) == attack_class:
             epsilon /= 0.9
         else:
             adversarial_sample = trial_sample
             break
-        if epsilon < 1e-6:
-             st.error("Could not find the decision boundary.")
-             return postprocess_for_display(adversarial_sample)
+        if epsilon > 100:
+             st.error("Could not find the decision boundary with this option.")
+             return postprocess_for_display(initial_sample)
 
     target_class = np.argmax(classifier.predict(adversarial_sample))
 
@@ -113,7 +140,7 @@ def run_blue_attack(original_image_pil, max_steps, progress_bar, image_placehold
 
         # Epsilon step
         for _ in range(10):
-            trial_sample = adversarial_sample + forward_perturbation(epsilon * get_diff(adversarial_sample, initial_sample), adversarial_sample, initial_sample)
+            trial_sample = adversarial_sample + forward_perturbation(epsilon * np.mean(get_diff(adversarial_sample, initial_sample)), adversarial_sample, initial_sample)
             prediction = classifier.predict(trial_sample.reshape(1, 224, 224, 3))
             if np.argmax(prediction) == target_class:
                 adversarial_sample = trial_sample
@@ -123,9 +150,15 @@ def run_blue_attack(original_image_pil, max_steps, progress_bar, image_placehold
                 epsilon *= 0.5
 
         # Update GUI
-        progress_bar.progress((n_steps + 1) / max_steps, text=f"Step {n_steps + 1}/{max_steps}")
-        if (n_steps + 1) % 10 == 0 or n_steps == max_steps - 1:
-            image_placeholder.image(postprocess_for_display(adversarial_sample), caption=f"Adversarial Image (Step {n_steps + 1})", use_container_width=True)
+        current_step = n_steps + 1
+        progress_bar.progress(current_step / max_steps, text=f"Step {current_step}/{max_steps}")
+        if current_step == 1 or current_step % 10 == 0 or current_step == max_steps:
+            mse = np.mean(get_diff(initial_sample, adversarial_sample))
+            adversarial_placeholder.image(postprocess_for_display(adversarial_sample), caption=f"Adversarial (Step {current_step}) | MSE: {mse:.4f}", use_container_width=True)
     
     progress_bar.empty()
-    return postprocess_for_display(adversarial_sample)
+    final_image = postprocess_for_display(adversarial_sample)
+    final_mse = np.mean(get_diff(initial_sample, adversarial_sample))
+    adversarial_placeholder.image(final_image, caption=f"Final Adversarial | MSE: {final_mse:.4f}", use_container_width=True)
+    
+    return final_image
