@@ -125,7 +125,6 @@ def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_p
     # Main attack loop
     for n_steps in range(max_steps):
 
-        # ... (attack logic remains the same) ...
         for _ in range(10):
             trial_samples = [adversarial_sample + orthogonal_perturbation(delta, adversarial_sample, initial_sample) for _ in range(10)]
             predictions = np.argmax(classifier.predict(np.array(trial_samples).reshape(-1, 224, 224, 3)), axis=1)
@@ -156,7 +155,6 @@ def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_p
             mse = np.mean(get_diff(initial_sample, adversarial_sample))
             adversarial_placeholder.image(current_adv_pil, caption=f"Adversarial (Step {current_step}) | MSE: {mse:.4f}", use_container_width=True)
 
-            # ステップ1以降でダウンロードボタンと注釈を表示
             buf = io.BytesIO()
             current_adv_pil.save(buf, format="PNG")
             byte_im = buf.getvalue()
@@ -185,5 +183,6 @@ def run_attack(original_image_pil, max_steps, color, progress_bar, adversarial_p
         key="download_final"
     )
     caption_placeholder.empty()
+
 
     return final_image
